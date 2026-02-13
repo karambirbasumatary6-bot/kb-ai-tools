@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KB AI TOOLS - Final Professional</title>
+    <style>
+        :root { --primary: #10a37f; --dark: #202123; --light: #f7f7f8; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--light); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Auth Screen */
+        #auth-overlay { position: fixed; inset: 0; background: #171717; z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .auth-card { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .auth-input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; outline: none; }
+        .auth-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.3s; }
+        .login-btn { background: var(--primary); color: white; }
+        .signup-btn { background: #343541; color: white; margin-top: 5px; }
+        .google-btn { background: white; color: #444; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 15px; }
+
+        /* App Layout */
+        header { background: var(--dark); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        #main-page { flex: 1; display: none; flex-direction: column; overflow: hidden; width: 100%; max-width: 900px; margin: 0 auto; background: white; }
+        #chat-display { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Bubbles */
+        .bubble { max-width: 85%; padding: 12px 16px; border-radius: 15px; font-size: 15px; line-height: 1.5; }
+        .user-bubble { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .ai-bubble { background: #f0f0f5; color: #333; align-self: flex-start; border-bottom-left-radius: 2px; white-space: pre-wrap; }
+        .chat-img { max-width: 200px; border-radius: 10px; display: block; margin-bottom: 5px; }
+
+        /* Input Area */
+        .input-wrapper { padding: 15px; border-top: 1px solid #eee; background: white; }
+        #image-preview-container { display: none; padding: 10px; background: #f9f9f9; border-radius: 10px; margin-bottom: 10px; border: 1px dashed var(--primary); width: fit-content; }
+        .input-container { display: flex; align-items: center; gap: 10px; }
+        .upload-btn { font-size: 24px; color: var(--primary); cursor: pointer; padding: 5px; }
+        #user-input { flex: 1; padding: 12px 20px; border: 1px solid #ddd; border-radius: 25px; outline: none; }
+        .send-btn { background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 20px; }
+
+        /* Menu Page with History */
+        #menu-page { position: fixed; top: 0; left: -100%; width: 300px; height: 100%; background: var(--dark); color: white; transition: 0.3s; z-index: 6000; padding: 20px; display: flex; flex-direction: column; }
+        #menu-page.active { left: 0; }
+        #history-list { flex: 1; overflow-y: auto; margin: 15px 0; padding: 5px; border-top: 1px solid #333; }
+        .history-item { padding: 12px; border-bottom: 1px solid #333; font-size: 14px; cursor: pointer; color: #ccc; transition: 0.2s; user-select: none; }
+        .history-item:active { background: #2a2b32; }
+        .mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 5500; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-overlay">
+        <div class="auth-card">
+            <h2 style="color:var(--primary); margin-bottom: 5px;">KB AI TOOLS</h2>
+            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Please Register first, then login.</p>
+            <input type="email" id="email" class="auth-input" placeholder="Email Address">
+            <input type="password" id="password" class="auth-input" placeholder="Password">
+            <button class="auth-btn login-btn" id="login-only-btn">Login</button>
+            <button class="auth-btn signup-btn" id="signup-only-btn">Signup (New Account)</button>
+            <div style="margin: 15px 0; color: #888; font-size: 13px;">OR</div>
+            <button class="auth-btn google-btn" id="google-login-btn">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18"> Continue with Google
+            </button>
+        </div>
+    </div>
+
+    <div class="mask" id="mask" onclick="toggleMenu()"></div>
+
+    <header>
+        <button onclick="toggleMenu()" style="background:none; border:none; color:var(--primary); font-size:25px; cursor:pointer;">☰</button>
+        <b style="color:var(--primary)">KB AI TOOLS</b>
+        <div style="width:30px"></div>
+    </header>
+
+    <main id="main-page">
+        <div id="chat-display"></div>
+        <div class="input-wrapper">
+            <div id="image-preview-container">
+                <img id="preview-img" style="height:60px; border-radius:5px;">
+                <button onclick="clearImage()" style="color:red; border:none; background:none; cursor:pointer; margin-left:10px;">✕</button>
+            </div>
+            <div class="input-container">
+                <label for="file-input" class="upload-btn">⊕</label>
+                <input type="file" id="file-input" accept="image/*" style="display:none">
+                <input type="text" id="user-input" placeholder="Type your message...">
+                <button class="send-btn" id="send-trigger">➤</button>
+            </div>
+        </div>
+    </main>
+
+    <div id="menu-page">
+        <h3>Dashboard</h3>
+        <p id="user-info" style="font-size:11px; color:var(--primary); margin:10px 0;"></p>
+        <hr style="border:0.5px solid #333;">
+        <h4 style="margin-top:15px; color:#eee;">Chat History</h4>
+        <p style="font-size:10px; color:#888;">(Hold to delete)</p>
+        <div id="history-list"></div>
+        <button onclick="handleLogout()" style="padding:12px; background:#ff4d4d; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Logout</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, onValue, push, set, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA1-XABnaJ8T66hbBSAAKzjhSiANOh0M1c",
+            authDomain: "kb-ai-tool.firebaseapp.com",
+            databaseURL: "https://kb-ai-tool-default-rtdb.firebaseio.com",
+            projectId: "kb-ai-tool",
+            storageBucket: "kb-ai-tool.firebasestorage.app",
+            messagingSenderId: "354647941150",
+            appId: "1:354647941150:web:5144568b8b7217e5d04e0f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        let currentUser = null;
+        let cloudKeys = { gemini: null, groq: null };
+        let selectedImageData = null;
+
+        // --- AUTH OBSERVER ---
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            document.getElementById('auth-overlay').style.display = user ? 'none' : 'flex';
+            document.getElementById('main-page').style.display = user ? 'flex' : 'none';
+            if(user) {
+                document.getElementById('user-info').innerText = user.email;
+                loadHistory();
+            }
+        });
+
+        // --- LOGIN / SIGNUP LOGIC ---
+        document.getElementById('signup-only-btn').onclick = async () => {
+            const e = document.getElementById('email').value, p = document.getElementById('password').value;
+            if(!e || !p) return alert("Fields are empty!");
+            try {
+                await createUserWithEmailAndPassword(auth, e, p);
+                await signOut(auth); // Direct entry band
+                alert("Account Created! Now please Login.");
+                document.getElementById('password').value = "";
+            } catch(err) { alert(err.message); }
+        };
+
+        document.getElementById('login-only-btn').onclick = async () => {
+            const e = document.getElementById('email').value, p = document.getElementById('password').value;
+            try { await signInWithEmailAndPassword(auth, e, p); } 
+            catch { alert("Login failed. Check details."); }
+        };
+
+        document.getElementById('google-login-btn').onclick = () => signInWithPopup(auth, googleProvider);
+        window.handleLogout = () => signOut(auth);
+
+        // --- HISTORY LOGIC ---
+        function saveHistory(text) {
+            if(!currentUser || !text) return;
+            const historyRef = ref(db, `users/${currentUser.uid}/history`);
+            push(historyRef, { text: text, time: Date.now() });
+        }
+
+        function loadHistory() {
+            const historyList = document.getElementById('history-list');
+            onValue(ref(db, `users/${currentUser.uid}/history`), (snapshot) => {
+                historyList.innerHTML = "";
+                const data = snapshot.val();
+                if(data) {
+                    Object.keys(data).reverse().forEach(key => {
+                        const div = document.createElement('div');
+                        div.className = "history-item";
+                        div.innerText = data[key].text.substring(0, 35) + "...";
+                        
+                        // Long Press Delete Logic
+                        let timer;
+                        const start = () => timer = setTimeout(() => {
+                            if(confirm("Delete this message from history?")) remove(ref(db, `users/${currentUser.uid}/history/${key}`));
+                        }, 800);
+                        const end = () => clearTimeout(timer);
+                        
+                        div.onmousedown = div.ontouchstart = start;
+                        div.onmouseup = div.onmouseleave = div.ontouchend = end;
+                        
+                        historyList.appendChild(div);
+                    });
+                } else { historyList.innerHTML = "<p style='color:#555; font-size:12px;'>No history found.</p>"; }
+            });
+        }
+
+        // --- AI & CHAT LOGIC ---
+        onValue(ref(db, 'settings/'), (s) => {
+            const d = s.val();
+            if(d) { cloudKeys.gemini = d.gemini?.apiKey || d.gemini; cloudKeys.groq = d.groq?.apiKey || d.groq; }
+        });
+
+        document.getElementById('file-input').onchange = (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                selectedImageData = reader.result;
+                document.getElementById('preview-img').src = reader.result;
+                document.getElementById('image-preview-container').style.display = 'block';
+            };
+            if(file) reader.readAsDataURL(file);
+        };
+
+        window.clearImage = () => {
+            selectedImageData = null;
+            document.getElementById('image-preview-container').style.display = 'none';
+        };
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const prompt = input.value.trim();
+            if(!prompt && !selectedImageData) return;
+
+            addMessage(prompt, 'user-bubble', selectedImageData);
+            if(prompt) saveHistory(prompt);
+            
+            input.value = "";
+            const currentImg = selectedImageData;
+            clearImage();
+
+            const aiMsg = addMessage("Thinking...", 'ai-bubble');
+
+            try {
+                let response = "";
+                if(currentImg) {
+                    response = await callGemini(prompt, currentImg);
+                } else {
+                    response = cloudKeys.groq ? await callGroq(prompt) : await callGemini(prompt, null);
+                }
+                aiMsg.innerText = response;
+            } catch (err) { aiMsg.innerText = "Error: " + err.message; }
+        }
+
+        async function callGroq(t) {
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method:"POST", headers:{"Authorization":`Bearer ${cloudKeys.groq}`,"Content-Type":"application/json"},
+                body: JSON.stringify({model:"mixtral-8x7b-32768", messages:[{role:"user",content:t}]})
+            });
+            const d = await res.json(); return d.choices[0].message.content;
+        }
+
+        async function callGemini(t, img) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cloudKeys.gemini}`;
+            let parts = [{text: t || "What's in this image?"}];
+            if(img) parts.push({inline_data:{mime_type:"image/jpeg", data: img.split(',')[1]}});
+            const res = await fetch(url, {method:"POST", body: JSON.stringify({contents:[{parts}]})});
+            const d = await res.json(); return d.candidates[0].content.parts[0].text;
+        }
+
+        function addMessage(t, cls, img) {
+            const display = document.getElementById('chat-display');
+            const div = document.createElement('div'); div.className = `bubble ${cls}`;
+            if(img) { const i = document.createElement('img'); i.src = img; i.className = "chat-img"; div.appendChild(i); }
+            if(t) { const s = document.createElement('span'); s.innerText = t; div.appendChild(s); }
+            display.appendChild(div); display.scrollTop = display.scrollHeight;
+            return div.querySelector('span') || div;
+        }
+
+        window.toggleMenu = () => {
+            document.getElementById('menu-page').classList.toggle('active');
+            document.getElementById('mask').style.display = document.getElementById('menu-page').classList.contains('active') ? 'block' : 'none';
+        };
+
+        document.getElementById('send-trigger').onclick = sendMessage;
+        document.getElementById('user-input').onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
+    </script>
+</body>
+</html>
